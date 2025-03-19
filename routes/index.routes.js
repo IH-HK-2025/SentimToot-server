@@ -75,7 +75,7 @@ router.get("/reddit", async (req, res) => {
     }
 
     // Analyze sentiment of the first Reddit post
-    const sentiment = await analyzeSentiment(`Analyze sentiment: ${posts[0]}`);
+    const sentiment = await analyzeSentiment(`Analyze sentiment: ${posts}`);
 
     res.json({ post: posts[0], sentiment });
   } catch (error) {
