@@ -1,27 +1,18 @@
-const router = require("express").Router();
-require("dotenv").config();
+const express = require("express");
 const axios = require("axios");
+require("dotenv").config();
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
-const OpenAI = require("openai");
+const router = express.Router();
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-router.get("/", (req, res) => {
-  res.json("All good in here");
-});
-
-const openai = new OpenAI({
-  baseURL: "https://api.deepseek.com",
-  apiKey: process.env.DEEPSEEK_API_KEY,
-});
-
+// Function to get Reddit OAuth token
 const getRedditToken = async () => {
-  const auth = Buffer.from(
-    `${process.env.REDDIT_CLIENT_ID}:${process.env.REDDIT_CLIENT_SECRET}`
-  ).toString("base64");
-
-  // console.log("Auth: ", auth);
-  // console.log("ENV: ", process.env.REDDIT_USER_AGENT);
-
   try {
+    const auth = Buffer.from(
+      `${process.env.REDDIT_CLIENT_ID}:${process.env.REDDIT_CLIENT_SECRET}`
+    ).toString("base64");
+
     const response = await axios.post(
       "https://www.reddit.com/api/v1/access_token",
       `grant_type=password&username=${process.env.REDDIT_USERNAME}&password=${process.env.REDDIT_PASSWORD}`,
@@ -33,7 +24,7 @@ const getRedditToken = async () => {
         },
       }
     );
-    // console.log(response.data.access_token);
+
     return response.data.access_token;
   } catch (error) {
     console.error("Error fetching Reddit token:", error.message);
@@ -41,54 +32,61 @@ const getRedditToken = async () => {
   }
 };
 
-// Route to fetch Reddit data
+// Function to analyze sentiment using Gemini AI
+const analyzeSentiment = async (text) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+    const chat = model.startChat();
+   
+    const prompt = `Determine the sentiment of this text: "${text}". Reply with either Positive, Negative, or Neutral.`;
+
+    const result = await chat.sendMessage(prompt);
+    const aiResponse = result.response.candidates?.[0]?.content?.parts?.[0]?.text || "Sentiment analysis failed.";
+
+    console.log("AI Response:", aiResponse); // Debugging
+
+    return aiResponse;
+  } catch (error) {
+    console.error("Error analyzing sentiment:", error.message);
+    return "Sentiment analysis failed.";
+  }
+};
+
+
+// Route to fetch Reddit posts and analyze sentiment
 router.get("/reddit", async (req, res) => {
   const token = await getRedditToken();
   if (!token) {
     return res.status(500).json({ error: "Failed to fetch Reddit token" });
   }
+
   try {
     // Fetch top posts from Reddit
-    const redditResponse = await axios.get(
-      "https://oauth.reddit.com/r/popular",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "User-Agent": process.env.REDDIT_USER_AGENT,
-        },
-      }
-    );
+    const redditResponse = await axios.get("https://oauth.reddit.com/r/popular", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "User-Agent": process.env.REDDIT_USER_AGENT,
+      },
+    });
 
-    const posts = redditResponse.data.data.children;
-    const text = posts.map((x) => x.data.title);
-
-    if (text.length === 0) {
+    const posts = redditResponse.data.data.children.map((x) => x.data.title);
+    if (posts.length === 0) {
       return res.status(500).json({ error: "No Reddit posts found" });
     }
 
-    // Send first Reddit post to DeepSeek AI for sentiment analysis
-    const responseAI = await axios.post(
-      "https://api.deepseek.com/v1/chat/completions",
-      {
-        model: "gpt-3.5-turbo",
-        messages: [{ role: "user", content: `Analyze sentiment: ${text[0]}` }],
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.DEEPSEEK_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
+    // Analyze sentiment of the first Reddit post
+    const sentiment = await analyzeSentiment(`Analyze sentiment: ${posts[0]}`);
 
-    // Extract the AI response
-    const aiSentiment = responseAI.data.choices[0].message.content;
-
-    res.json({ post: text[0], sentiment: aiSentiment });
+    res.json({ post: posts[0], sentiment });
   } catch (error) {
-    console.error("Error fetching AI response:", error.message);
+    console.error("Error fetching Reddit posts:", error.message);
     res.status(500).json({ error: "Failed to process AI response" });
   }
+});
+
+// Test route
+router.get("/", (req, res) => {
+  res.json("All good in here");
 });
 
 module.exports = router;
