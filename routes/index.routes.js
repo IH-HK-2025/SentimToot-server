@@ -40,23 +40,27 @@ const getTestUser = async () => {
   });
 };
 
-// // Add the analyzeSentiment function
-// const analyzeSentiment = async (text) => {
-//   try {
-//     const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-//     const prompt = `Analyze sentiment of: "${text}". Respond ONLY with: Positive, Negative, or Neutral.`;
+// Analyze Sentiment function
+const analyzeSentiment = async (text) => {
+  try {
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+    const prompt = `Analyze sentiment of this post title: "${text}". Reply ONLY with Positive, Negative, or Neutral.`;
 
-//     const result = await model.generateContent(prompt);
-//     const response = (await result.response.text()).trim().toLowerCase();
+    const result = await model.generateContent(prompt);
+    const response = (await result.response.text()).trim().toLowerCase();
 
-//     if (response.includes("positive")) return "Positive";
-//     if (response.includes("negative")) return "Negative";
-//     return "Neutral";
-//   } catch (error) {
-//     console.error("Sentiment analysis error:", error.message);
-//     return "Neutral";
-//   }
-// };
+    if (response.includes("positive")) {
+      return "Positive";
+    }
+    if (response.includes("negative")) {
+      return "Negative";
+    }
+    return "Neutral";
+  } catch (error) {
+    console.error("Sentiment analysis error:", error.message);
+    return "Sentiment analysis error";
+  }
+};
 
 router.get("/reddit", async (req, res) => {
   const token = await getRedditToken();
@@ -83,16 +87,25 @@ router.get("/reddit", async (req, res) => {
       }
     );
 
-    const posts = redditResponse.data.data.children.map((post) => ({
-      id: post.data.id,
-      title: post.data.title,
-      url: `https://reddit.com${post.data.permalink}`,
-      author: post.data.author,
-      score: post.data.score,
-      created: new Date(post.data.created_utc * 1000),
-    }));
+    // Process posts with sentiment analysis
+    const posts = await Promise.all(
+      redditResponse.data.data.children.map(async (post) => {
+        const postData = post.data;
+        const sentiment = await analyzeSentiment(postData.title);
 
-    // Store posts in database
+        return {
+          id: postData.id,
+          title: postData.title,
+          url: `https://reddit.com${postData.permalink}`,
+          author: postData.author,
+          score: postData.score,
+          sentiment,
+          created: new Date(postData.created_utc * 1000),
+        };
+      })
+    );
+
+    // Store posts without sentiment (if you want to store sentiment, add it to your Prisma model)
     await prisma.redditPost.createMany({
       data: posts.map((post) => ({
         postId: post.id,
@@ -113,13 +126,14 @@ router.get("/reddit", async (req, res) => {
         url: post.url,
         score: post.score,
         author: post.author,
+        sentiment: post.sentiment,
         created: post.created,
       })),
     });
   } catch (error) {
     console.error("Error:", error.message);
     res.status(500).json({
-      error: "Failed to fetch Reddit posts",
+      error: "Failed to process Reddit posts",
       details: error.response?.data,
     });
   }
