@@ -2,6 +2,8 @@ const express = require("express");
 const axios = require("axios");
 require("dotenv").config();
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 
 const router = express.Router();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -32,28 +34,30 @@ const getRedditToken = async () => {
   }
 };
 
-// Function to analyze sentiment using Gemini AI
-const analyzeSentiment = async (text) => {
-  try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
-    const chat = model.startChat();
-   
-    const prompt = `Determine the sentiment of this text: "${text}". Reply with either Positive, Negative, or Neutral.`;
-
-    const result = await chat.sendMessage(prompt);
-    const aiResponse = result.response.candidates?.[0]?.content?.parts?.[0]?.text || "Sentiment analysis failed.";
-
-    console.log("AI Response:", aiResponse); // Debugging
-
-    return aiResponse;
-  } catch (error) {
-    console.error("Error analyzing sentiment:", error.message);
-    return "Sentiment analysis failed.";
-  }
+const getTestUser = async () => {
+  return await prisma.user.findUnique({
+    where: { email: "test@test.com" },
+  });
 };
 
+// // Add the analyzeSentiment function
+// const analyzeSentiment = async (text) => {
+//   try {
+//     const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+//     const prompt = `Analyze sentiment of: "${text}". Respond ONLY with: Positive, Negative, or Neutral.`;
 
-// Route to fetch Reddit posts and analyze sentiment
+//     const result = await model.generateContent(prompt);
+//     const response = (await result.response.text()).trim().toLowerCase();
+
+//     if (response.includes("positive")) return "Positive";
+//     if (response.includes("negative")) return "Negative";
+//     return "Neutral";
+//   } catch (error) {
+//     console.error("Sentiment analysis error:", error.message);
+//     return "Neutral";
+//   }
+// };
+
 router.get("/reddit", async (req, res) => {
   const token = await getRedditToken();
   if (!token) {
@@ -61,26 +65,63 @@ router.get("/reddit", async (req, res) => {
   }
 
   try {
-    // Fetch top posts from Reddit
-    const redditResponse = await axios.get("https://oauth.reddit.com/r/popular", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "User-Agent": process.env.REDDIT_USER_AGENT,
-      },
+    const { subreddit = "popular", category = "hot", limit = 5 } = req.query;
+
+    const user = await getTestUser();
+
+    // Fetch posts from Reddit API
+    const redditResponse = await axios.get(
+      `https://oauth.reddit.com/r/${subreddit}/${category}`,
+      {
+        params: {
+          limit: limit,
+        },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "User-Agent": process.env.REDDIT_USER_AGENT,
+        },
+      }
+    );
+
+    const posts = redditResponse.data.data.children.map((post) => ({
+      id: post.data.id,
+      title: post.data.title,
+      url: `https://reddit.com${post.data.permalink}`,
+      author: post.data.author,
+      score: post.data.score,
+      created: new Date(post.data.created_utc * 1000),
+    }));
+
+    // Store posts in database
+    await prisma.redditPost.createMany({
+      data: posts.map((post) => ({
+        postId: post.id,
+        title: post.title,
+        url: post.url,
+        author: post.author,
+        score: post.score,
+        userId: user.id,
+      })),
+      skipDuplicates: true,
     });
 
-    const posts = redditResponse.data.data.children.map((x) => x.data.title);
-    if (posts.length === 0) {
-      return res.status(500).json({ error: "No Reddit posts found" });
-    }
-
-    // Analyze sentiment of the first Reddit post
-    const sentiment = await analyzeSentiment(`Analyze sentiment: ${posts}`);
-
-    res.json({ post: posts[0], sentiment });
+    res.json({
+      subreddit,
+      category,
+      posts: posts.map((post) => ({
+        title: post.title,
+        url: post.url,
+        score: post.score,
+        author: post.author,
+        created: post.created,
+      })),
+    });
   } catch (error) {
-    console.error("Error fetching Reddit posts:", error.message);
-    res.status(500).json({ error: "Failed to process AI response" });
+    console.error("Error:", error.message);
+    res.status(500).json({
+      error: "Failed to fetch Reddit posts",
+      details: error.response?.data,
+    });
   }
 });
 
