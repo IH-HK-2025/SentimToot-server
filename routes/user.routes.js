@@ -122,4 +122,39 @@ router.get("/verify", isAuthenticated, (req, res) => {
   res.json(req.payload);
 });
 
+router.get("/users", async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: { id: true, name: true, email: true, createdAt: true, posts:true },
+    });
+
+    res.json(users);
+  } catch (err) {
+    console.error("Error fetching users:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
+router.get("/users/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: Number(id) }, // Convert id to a number if it's an integer in Prisma
+      select: { id: true, name: true, email: true, createdAt: true, posts: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user);
+  } catch (err) {
+    console.error("Error fetching user:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
 module.exports = router;
