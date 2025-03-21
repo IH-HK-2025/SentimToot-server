@@ -40,10 +40,14 @@ const getTestUser = async () => {
   });
 };
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // Analyze Sentiment function
 const analyzeSentiment = async (text) => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const prompt = `Analyze sentiment of this post title: "${text}". Reply ONLY with Positive, Negative, or Neutral.`;
 
     const result = await model.generateContent(prompt);
@@ -55,7 +59,9 @@ const analyzeSentiment = async (text) => {
     if (response.includes("negative")) {
       return "Negative";
     }
-    return "Neutral";
+    if (response.includes("neutral")) {
+      return "Neutral";
+    }
   } catch (error) {
     console.error("Sentiment analysis error:", error.message);
     return "Sentiment analysis error";
@@ -88,12 +94,14 @@ router.get("/reddit", async (req, res) => {
     );
 
     // Process posts with sentiment analysis
-    const posts = await Promise.all(
-      redditResponse.data.data.children.map(async (post) => {
-        const postData = post.data;
-        const sentiment = await analyzeSentiment(postData.title);
+    const posts = [];
 
-        return {
+    for (const post of redditResponse.data.data.children) {
+      const postData = post.data;
+
+      try {
+        const sentiment = await analyzeSentiment(postData.title);
+        posts.push({
           id: postData.id,
           title: postData.title,
           url: `https://reddit.com${postData.permalink}`,
@@ -101,11 +109,15 @@ router.get("/reddit", async (req, res) => {
           score: postData.score,
           sentiment,
           created: new Date(postData.created_utc * 1000),
-        };
-      })
-    );
+        });
 
-    // Store posts without sentiment (if you want to store sentiment, add it to your Prisma model)
+        await delay(1000);
+      } catch (error) {
+        console.error("Error analyzing sentiment:", error);
+      }
+    }
+
+    // Store posts into Prisma model)
     await prisma.redditPost.createMany({
       data: posts.map((post) => ({
         postId: post.id,
