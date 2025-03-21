@@ -1,6 +1,7 @@
 const express = require("express");
 const axios = require("axios");
 require("dotenv").config();
+const { isAuthenticated } = require("../middleware/jwt.middleware");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
@@ -34,15 +35,9 @@ const getRedditToken = async () => {
   }
 };
 
-const getTestUser = async () => {
-  return await prisma.user.findUnique({
-    where: { email: "test@test.com" },
-  });
-};
-
-function delay(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+// function delay(ms) {
+//   return new Promise((resolve) => setTimeout(resolve, ms));
+// }
 
 // Analyze Sentiment function
 const analyzeSentiment = async (text) => {
@@ -68,24 +63,21 @@ const analyzeSentiment = async (text) => {
   }
 };
 
-router.get("/reddit", async (req, res) => {
+router.get("/reddit", isAuthenticated, async (req, res) => {
   const token = await getRedditToken();
   if (!token) {
     return res.status(500).json({ error: "Failed to fetch Reddit token" });
   }
 
   try {
-    const { subreddit = "popular", category = "hot", limit = 5 } = req.query;
-
-    const user = await getTestUser();
+    const { subreddit = "popular", category = "hot", limit = 10 } = req.query;
+    const userId = req.payload.id;
 
     // Fetch posts from Reddit API
     const redditResponse = await axios.get(
       `https://oauth.reddit.com/r/${subreddit}/${category}`,
       {
-        params: {
-          limit: limit,
-        },
+        params: { limit: limit },
         headers: {
           Authorization: `Bearer ${token}`,
           "User-Agent": process.env.REDDIT_USER_AGENT,
@@ -95,10 +87,8 @@ router.get("/reddit", async (req, res) => {
 
     // Process posts with sentiment analysis
     const posts = [];
-
     for (const post of redditResponse.data.data.children) {
       const postData = post.data;
-
       try {
         const sentiment = await analyzeSentiment(postData.title);
         posts.push({
@@ -110,14 +100,12 @@ router.get("/reddit", async (req, res) => {
           sentiment,
           created: new Date(postData.created_utc * 1000),
         });
-
-        await delay(1000);
       } catch (error) {
         console.error("Error analyzing sentiment:", error);
       }
     }
 
-    // Store posts into Prisma model)
+    // Store posts into Prisma model, linked to user
     await prisma.redditPost.createMany({
       data: posts.map((post) => ({
         postId: post.id,
@@ -125,7 +113,7 @@ router.get("/reddit", async (req, res) => {
         url: post.url,
         author: post.author,
         score: post.score,
-        userId: user.id,
+        userId,
       })),
       skipDuplicates: true,
     });
