@@ -10,10 +10,12 @@
     "@google/generative-ai": "^0.24.0",
     "@prisma/client": "^6.5.0",
     "axios": "^1.8.3",
+    "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "openai": "^4.87.4",
     "postgres": "^3.4.5"
