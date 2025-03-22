@@ -89,9 +89,9 @@ router.post("/login", async (req, res) => {
 // PUT /auth/password (Change Password)
 //
 router.put("/password", async (req, res) => {
-  const { email, newPassword } = req.body;
+  const { email, password } = req.body;
 
-  if (!email || !newPassword) {
+  if (!email || !password) {
     return res.status(400).json({ message: "Provide email and new password." });
   }
 
@@ -102,7 +102,7 @@ router.put("/password", async (req, res) => {
       return res.status(404).json({ message: "User not found." });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
     await prisma.user.update({
       where: { email },
       data: { password: hashedPassword },
