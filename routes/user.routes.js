@@ -156,5 +156,27 @@ router.get("/users/:id", async (req, res) => {
   }
 });
 
+// DELETE /auth/users/:id (Delete User - Requires Authentication)
+//
+router.delete("/users/:id", isAuthenticated, async (req, res) => {
+  const { id } = req.params;
+  const userIdFromToken = req.payload.id; // Extract user ID from JWT token
+
+  if (Number(id) !== userIdFromToken) {
+    return res.status(403).json({ message: "Unauthorized to delete this account" });
+  }
+
+  try {
+    await prisma.user.delete({
+      where: { id: Number(id) }, // Ensure id is treated as an integer
+    });
+
+    res.status(200).json({ message: "User deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting user:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
 
 module.exports = router;
