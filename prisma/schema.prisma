@@ -8,22 +8,25 @@ datasource db {
 }
 
 model User {
-  id        Int          @id @default(autoincrement())
-  email     String       @unique
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
   password  String
   name      String?
-  posts     RedditPost[] 
-  createdAt DateTime     @default(now())
+  toots     Toot[]
+  createdAt DateTime @default(now())
+
+  @@map("users")
 }
 
-model RedditPost {
-  id        Int      @id @default(autoincrement())
-  postId    String   @unique
-  title     String
-  url       String
-  author    String
-  score     Int
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+model Toot {
+  id         String   @id @default(uuid())
+  mastodonId String   @unique
+  content    String
+  url        String
+  visibility String
+  userId     Int
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@map("toots")
 }

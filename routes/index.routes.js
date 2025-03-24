@@ -92,6 +92,57 @@ router.get("/mastodon", async (req, res) => {
   }
 });
 
+router.post("/toot", isAuthenticated, async (req, res) => {
+  const { content, visibility = "public" } = req.body;
+  const instance = "mastodon.social";
+  const token = process.env.MASTODON_ACCESS_TOKEN;
+  const userId = req.payload.id;
+  console.log(userId);
+
+  if (!token)
+    return res.status(500).json({ error: "Server configuration error" });
+  if (!content) return res.status(400).json({ error: "Content is required" });
+  if (content.length > 500)
+    return res
+      .status(400)
+      .json({ error: "Toot too long (max 500 characters)" });
+
+  try {
+    const response = await axios.post(
+      `https://${instance}/api/v1/statuses`,
+      { status: content, visibility },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const createdToot = await prisma.toot.create({
+      data: {
+        mastodonId: response.data.id,
+        content: response.data.content,
+        url: response.data.url,
+        visibility: response.data.visibility,
+        userId: userId,
+        createdAt: new Date(response.data.created_at),
+      },
+    });
+
+    res.status(201).json(createdToot);
+  } catch (error) {
+    console.error(
+      "Toot creation error:",
+      error.response?.data || error.message
+    );
+    res.status(500).json({
+      error: "Failed to post toot",
+      details: error.response?.data || error.message,
+    });
+  }
+});
+
 router.get("/", (req, res) => {
   res.json("All good in here");
 });
