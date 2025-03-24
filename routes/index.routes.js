@@ -68,7 +68,6 @@ router.get("/mastodon", async (req, res) => {
 
     const newArr = toots.map((element, i) => ({
       ...element,
-      content: convert(element.content, { wordwrap: false }).replace(/\n/g, " ").trim(),
       sentiment: responseSentiment[i],
     }));
 
