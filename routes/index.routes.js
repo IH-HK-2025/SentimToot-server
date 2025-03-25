@@ -65,51 +65,33 @@ async function getData(instance, token, keyword, limit = 10) {
 }
 
 router.get("/mastodon", isAuthenticated, async (req, res) => {
-<<<<<<< Updated upstream
-  const { instance = "mastodon.social", keyword, limit = 10 } = req.query;
+  const { instance = "mastodon.social", keyword = "Tech", limit = 10 } = req.query;
   const userId = req.payload.id;
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { mastodonToken: true },
+    select: { mastodonToken: true, history: true },
   });
 
   const token = user.mastodonToken;
-  // console.log(token);
 
-  if (!user || !user.mastodonToken) {
+  if (!user || !token) {
     return res.status(404).json({ error: "Mastodon token not found" });
   }
-=======
-  const { instance = "mastodon.social", keyword = "Tech", limit = 10 } = req.query;
-  const token = process.env.MASTODON_ACCESS_TOKEN;
->>>>>>> Stashed changes
 
   if (!keyword) return res.status(400).json({ error: "Keyword required" });
 
   try {
-    const userId = req.payload.id;
     const toots = await getData(instance, token, keyword, limit);
     if (!toots.length) return res.status(404).json({ error: "No toots found" });
 
     const responseSentiment = await Promise.all(toots.map((t) => getSentiment(t.content)));
     const newArr = toots.map((element, i) => ({ ...element, sentiment: responseSentiment[i] }));
-    const overallSentiment = await getSentiment(toots.map((t) => convert(t.content, { wordwrap: false }).replace(/\n/g, " ").trim()).join(" "));
-
-<<<<<<< Updated upstream
-    const newArr = toots.map((element, i) => ({
-      ...element,
-      sentiment: responseSentiment[i],
-    }));
-
     const overallSentiment = await getSentiment(
       toots
-        .map((t) =>
-          convert(t.content, { wordwrap: false }).replace(/\n/g, " ").trim()
-        )
+        .map((t) => convert(t.content, { wordwrap: false }).replace(/\n/g, " ").trim())
         .join(" ")
     );
 
-    // Construct the full response object
     const responseObject = {
       keyword,
       instance,
@@ -118,32 +100,13 @@ router.get("/mastodon", isAuthenticated, async (req, res) => {
       data: newArr,
     };
 
-    // Convert the response to a string and store in history
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { history: true },
-    });
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
     await prisma.user.update({
       where: { id: userId },
       data: {
         history: {
-          set: [...user.history, JSON.stringify(responseObject)],
+          set: [...(user.history || []), JSON.stringify(responseObject)],
         },
       },
-=======
-    const responseObject = { keyword, instance, count: toots.length, sentiment: overallSentiment, data: newArr };
-    const user = await prisma.user.findUnique({ where: { id: userId }, select: { history: true } });
-    
-    if (!user) throw new Error("User not found");
-    await prisma.user.update({
-      where: { id: userId },
-      data: { history: { set: [...user.history, JSON.stringify(responseObject)] } },
->>>>>>> Stashed changes
     });
 
     res.json(responseObject);
@@ -157,23 +120,17 @@ router.post("/toot", isAuthenticated, async (req, res) => {
   const { content, visibility = "public" } = req.body;
   const instance = "mastodon.social";
   const userId = req.payload.id;
-<<<<<<< Updated upstream
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { mastodonToken: true },
   });
 
-  const token = user.mastodonToken;
-  // console.log(token);
+  const token = user?.mastodonToken;
 
-  if (!user || !user.mastodonToken) {
+  if (!user || !token) {
     return res.status(404).json({ error: "Mastodon token not found" });
   }
 
-=======
-
-  if (!token) return res.status(500).json({ error: "Server configuration error" });
->>>>>>> Stashed changes
   if (!content) return res.status(400).json({ error: "Content is required" });
   if (content.length > 500) return res.status(400).json({ error: "Toot too long (max 500 characters)" });
 
