@@ -192,81 +192,96 @@ router.get("/users/toots/:id", isAuthenticated, async (req, res) => {
 
 // for clearing history of activity of user
 
-router.get("/users/history/:id/empty", isAuthenticated, async (req, res) => {
+
+router.delete("/users/history/:id", isAuthenticated, async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Verify user exists first
     const user = await prisma.user.findUnique({
       where: { id: Number(id) },
-      select: { history: true },
     });
 
     if (!user) {
       return res.status(404).json({ 
         status: "error",
-        message: "User not found",
-        isEmpty: null 
+        message: "User not found"
       });
     }
 
-    const isEmpty = !user.history || user.history.length === 0;
-    
+    // Clear the history array
+    await prisma.user.update({
+      where: { id: Number(id) },
+      data: {
+        history: {
+          set: [] // Empty array
+        }
+      }
+    });
+
     res.status(200).json({
       status: "success",
-      message: isEmpty ? "History is empty" : "History contains items",
-      isEmpty: isEmpty,
-      count: isEmpty ? 0 : user.history.length
+      message: "History cleared successfully",
+      count: 0
     });
 
   } catch (err) {
-    console.error("Error checking history:", err);
+    console.error("Error clearing history:", err);
     res.status(500).json({ 
       status: "error",
-      message: "Internal Server Error",
-      isEmpty: null 
+      message: "Internal Server Error"
     });
   }
 });
 
 // for clearing toots history 
 
-router.get("/users/toots/:id/empty", isAuthenticated, async (req, res) => {
+
+router.delete("/users/toots/:id", isAuthenticated, async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Verify user exists first
     const user = await prisma.user.findUnique({
       where: { id: Number(id) },
-      select: { toots: true },
     });
 
     if (!user) {
       return res.status(404).json({ 
         status: "error",
-        message: "User not found",
-        isEmpty: null 
+        message: "User not found"
       });
     }
 
-    const isEmpty = !user.toots || user.toots.length === 0;
-    
+    // Option 1: Clear the relation (if using separate Toot model)
+    await prisma.toot.deleteMany({
+      where: { userId: Number(id) }
+    });
+
+    // OR Option 2: If toots are stored directly in User model:
+    await prisma.user.update({
+      where: { id: Number(id) },
+      data: {
+        toots: {
+          set: []
+        }
+      }
+    });
+
     res.status(200).json({
       status: "success",
-      message: isEmpty ? "Toots array is empty" : "Toots array contains items",
-      isEmpty: isEmpty,
-      count: isEmpty ? 0 : user.toots.length
+      message: "Toots cleared successfully",
+      count: 0
     });
 
   } catch (err) {
-    console.error("Error checking toots:", err);
+    console.error("Error clearing toots:", err);
     res.status(500).json({ 
       status: "error",
-      message: "Internal Server Error",
-      isEmpty: null 
+      message: "Internal Server Error"
     });
   }
 });
-
-
 
 // DELETE /auth/users/:id (Delete User - Requires Authentication)
 //
