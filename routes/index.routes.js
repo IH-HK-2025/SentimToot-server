@@ -47,7 +47,7 @@ async function getSentiment(text) {
   }
 }
 
-router.get("/mastodon", async (req, res) => {
+router.get("/mastodon", isAuthenticated, async (req, res) => {
   const {
     instance = "mastodon.social",
     keyword = "Tech",
@@ -59,6 +59,8 @@ router.get("/mastodon", async (req, res) => {
   if (!keyword) return res.status(400).json({ error: "Keyword required" });
 
   try {
+    const userId = req.payload.id;
+
     const toots = await getData(instance, token, keyword, limit);
     if (!toots.length) return res.status(404).json({ error: "No toots found" });
 
@@ -79,18 +81,42 @@ router.get("/mastodon", async (req, res) => {
         .join(" ")
     );
 
-    res.json({
+    // Construct the full response object
+    const responseObject = {
       keyword,
       instance,
       count: toots.length,
       sentiment: overallSentiment,
       data: newArr,
+    };
+
+    // Convert the response to a string and store in history
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { history: true }
     });
+    
+    if (!user) {
+      throw new Error("User not found");
+    }
+    
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        history: {
+          set: [...user.history, JSON.stringify(responseObject)]
+        }
+      },
+    })
+
+    // Send the same response back to the user
+    res.json(responseObject);
   } catch (error) {
     console.error("Server error:", error.message);
     res.status(500).json({ error: "Processing failed" });
   }
 });
+
 
 router.post("/toot", isAuthenticated, async (req, res) => {
   const { content, visibility = "public" } = req.body;

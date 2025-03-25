@@ -12,7 +12,8 @@ model User {
   email     String   @unique
   password  String
   name      String?
-  toots     Toot[]
+  toots     Toot[] 
+  history   String[] @default([])
   createdAt DateTime @default(now())
 
   @@map("users")

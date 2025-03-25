@@ -135,26 +135,62 @@ router.get("/users", async (req, res) => {
   }
 });
 
+// user history end point
 
-router.get("/users/:id", async (req, res) => {
+router.get("/users/history/:id", isAuthenticated, async (req, res) => {
   const { id } = req.params;
 
   try {
     const user = await prisma.user.findUnique({
-      where: { id: Number(id) }, // Convert id to a number if it's an integer in Prisma
-      select: { id: true, name: true, email: true, createdAt: true, posts: true },
+      where: { id: Number(id) }, // Ensure ID is an integer
+      select: { history: true },
     });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    res.json(user);
+    if (!user.history || user.history.length === 0) {
+      return res.status(200).json({ message: "No history found for this user" });
+    }
+
+    // Parse JSON strings into objects before sending the response
+    const parsedHistory = user.history.map((entry) => JSON.parse(entry));
+
+    res.json(parsedHistory);
   } catch (err) {
-    console.error("Error fetching user:", err);
+    console.error("Error fetching user history:", err);
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
+
+// user toot end point 
+
+router.get("/users/toots/:id", isAuthenticated, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: Number(id) },
+      select: { toots: true }, // Select the related 'toots' from the database
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.toots || user.toots.length === 0) {
+      return res.status(200).json({ message: "No toots found for this user" });
+    }
+
+    res.json(user.toots); // No need to parse, Prisma already returns an array
+  } catch (err) {
+    console.error("Error fetching user toots:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+
 
 // DELETE /auth/users/:id (Delete User - Requires Authentication)
 //
