@@ -190,6 +190,82 @@ router.get("/users/toots/:id", isAuthenticated, async (req, res) => {
   }
 });
 
+// for clearing history of activity of user
+
+router.get("/users/history/:id/empty", isAuthenticated, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: Number(id) },
+      select: { history: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ 
+        status: "error",
+        message: "User not found",
+        isEmpty: null 
+      });
+    }
+
+    const isEmpty = !user.history || user.history.length === 0;
+    
+    res.status(200).json({
+      status: "success",
+      message: isEmpty ? "History is empty" : "History contains items",
+      isEmpty: isEmpty,
+      count: isEmpty ? 0 : user.history.length
+    });
+
+  } catch (err) {
+    console.error("Error checking history:", err);
+    res.status(500).json({ 
+      status: "error",
+      message: "Internal Server Error",
+      isEmpty: null 
+    });
+  }
+});
+
+// for clearing toots history 
+
+router.get("/users/toots/:id/empty", isAuthenticated, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: Number(id) },
+      select: { toots: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ 
+        status: "error",
+        message: "User not found",
+        isEmpty: null 
+      });
+    }
+
+    const isEmpty = !user.toots || user.toots.length === 0;
+    
+    res.status(200).json({
+      status: "success",
+      message: isEmpty ? "Toots array is empty" : "Toots array contains items",
+      isEmpty: isEmpty,
+      count: isEmpty ? 0 : user.toots.length
+    });
+
+  } catch (err) {
+    console.error("Error checking toots:", err);
+    res.status(500).json({ 
+      status: "error",
+      message: "Internal Server Error",
+      isEmpty: null 
+    });
+  }
+});
+
 
 
 // DELETE /auth/users/:id (Delete User - Requires Authentication)
