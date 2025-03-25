@@ -4,30 +4,31 @@ CREATE TABLE "users" (
     "email" TEXT NOT NULL,
     "password" TEXT NOT NULL,
     "name" TEXT,
+    "mastodonToken" TEXT,
+    "history" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "reddit_posts" (
-    "id" SERIAL NOT NULL,
-    "postId" TEXT NOT NULL,
-    "title" TEXT NOT NULL,
+CREATE TABLE "toots" (
+    "id" TEXT NOT NULL,
+    "mastodonId" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
     "url" TEXT NOT NULL,
-    "author" TEXT NOT NULL,
-    "score" INTEGER NOT NULL,
+    "visibility" TEXT NOT NULL,
     "userId" INTEGER NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "reddit_posts_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "toots_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "reddit_posts_postId_key" ON "reddit_posts"("postId");
+CREATE UNIQUE INDEX "toots_mastodonId_key" ON "toots"("mastodonId");
 
 -- AddForeignKey
-ALTER TABLE "reddit_posts" ADD CONSTRAINT "reddit_posts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "toots" ADD CONSTRAINT "toots_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

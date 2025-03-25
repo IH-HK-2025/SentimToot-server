@@ -48,14 +48,20 @@ async function getSentiment(text) {
 }
 
 router.get("/mastodon", isAuthenticated, async (req, res) => {
-  const {
-    instance = "mastodon.social",
-    keyword = "Tech",
-    limit = 10,
-  } = req.query;
-  const token = process.env.MASTODON_ACCESS_TOKEN;
+  const { instance = "mastodon.social", keyword, limit = 10 } = req.query;
+  const userId = req.payload.id;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { mastodonToken: true },
+  });
 
-  if (!token) return res.status(500).json({ error: "Missing API token" });
+  const token = user.mastodonToken;
+  // console.log(token);
+
+  if (!user || !user.mastodonToken) {
+    return res.status(404).json({ error: "Mastodon token not found" });
+  }
+
   if (!keyword) return res.status(400).json({ error: "Keyword required" });
 
   try {
@@ -93,21 +99,21 @@ router.get("/mastodon", isAuthenticated, async (req, res) => {
     // Convert the response to a string and store in history
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { history: true }
+      select: { history: true },
     });
-    
+
     if (!user) {
       throw new Error("User not found");
     }
-    
+
     await prisma.user.update({
       where: { id: userId },
       data: {
         history: {
-          set: [...user.history, JSON.stringify(responseObject)]
-        }
+          set: [...user.history, JSON.stringify(responseObject)],
+        },
       },
-    })
+    });
 
     // Send the same response back to the user
     res.json(responseObject);
@@ -117,16 +123,22 @@ router.get("/mastodon", isAuthenticated, async (req, res) => {
   }
 });
 
-
 router.post("/toot", isAuthenticated, async (req, res) => {
   const { content, visibility = "public" } = req.body;
   const instance = "mastodon.social";
-  const token = process.env.MASTODON_ACCESS_TOKEN;
   const userId = req.payload.id;
-  console.log(userId);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { mastodonToken: true },
+  });
 
-  if (!token)
-    return res.status(500).json({ error: "Server configuration error" });
+  const token = user.mastodonToken;
+  // console.log(token);
+
+  if (!user || !user.mastodonToken) {
+    return res.status(404).json({ error: "Mastodon token not found" });
+  }
+
   if (!content) return res.status(400).json({ error: "Content is required" });
   if (content.length > 500)
     return res

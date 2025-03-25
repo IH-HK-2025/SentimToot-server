@@ -8,13 +8,14 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  name      String?
-  toots     Toot[] 
-  history   String[] @default([])
-  createdAt DateTime @default(now())
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  password      String
+  name          String?
+  mastodonToken String?
+  toots         Toot[]
+  history       String[] @default([])
+  createdAt     DateTime @default(now())
 
   @@map("users")
 }
