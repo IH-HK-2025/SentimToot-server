@@ -47,6 +47,7 @@ async function getSentiment(text) {
 
 router.post("/", isAuthenticated, async (req, res) => {
   const { numTrends, numPosts } = req.body;
+
   const instance = "mastodon.social";
 
   if (numTrends < 1 || numPosts < 1) {
@@ -78,6 +79,10 @@ router.post("/", isAuthenticated, async (req, res) => {
     ]);
 
     const trends = trendsResponse.data.slice(0, numTrends);
+    console.log("TRends: ", trends.length);
+    // console.log("num of trends: ", numTrends);
+    // console.log("num of posts: ", numPosts);
+
     const trendAnalyses = await Promise.all(
       trends.map(async (trend) => {
         try {
@@ -93,6 +98,8 @@ router.post("/", isAuthenticated, async (req, res) => {
               headers: { Authorization: `Bearer ${mastodonToken}` },
             }
           );
+
+          console.log("Posts: ", searchResponse.data.statuses.length);
 
           const posts = await Promise.all(
             searchResponse.data.statuses.map(async (post) => {

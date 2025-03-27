@@ -307,6 +307,54 @@ router.get("/users/toots/:id", isAuthenticated, async (req, res) => {
   }
 });
 
+// Edit a Mastodon toots
+router.patch("/edit-toots/:tootId", isAuthenticated, async (req, res) => {
+  const { status } = req.body;
+  const { tootId } = req.params;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.payload.id },
+      select: { mastodonToken: true },
+    });
+
+    if (!user?.mastodonToken) {
+      return res.status(400).json({ error: "Mastodon token missing" });
+    }
+    const MASTODON_INSTANCE = "mastodon.social";
+
+    // Update the toot on Mastodon
+    const response = await axios.patch(
+      `https://${MASTODON_INSTANCE}/api/v1/statuses/${tootId}`,
+      { status },
+      {
+        headers: {
+          Authorization: `Bearer ${user?.mastodonToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    const sentiment = await getSentiment(status);
+
+    const responseData = {
+      ...response.data,
+      content: status,
+      sentiment: sentiment,
+    };
+
+    res.json(responseData);
+  } catch (error) {
+    console.error(
+      "Error editing status:",
+      error.response?.data || error.message
+    );
+    res.status(error.response?.status || 500).json({
+      error: error.response?.data || "Failed to edit status",
+    });
+  }
+});
+
 // delete user toots from the Mastodon account
 router.delete("/toots/:tootId", isAuthenticated, async (req, res) => {
   try {
