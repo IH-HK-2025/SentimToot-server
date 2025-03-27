@@ -191,6 +191,77 @@ router.get("/users", async (req, res) => {
   }
 });
 
+// user history end point
+router.get("/users/history/:id", isAuthenticated, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: Number(id) }, // Ensure ID is an integer
+      select: { history: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (!user.history || user.history.length === 0) {
+      return res
+        .status(200)
+        .json({ message: "No history found for this user" });
+    }
+
+    // Parse JSON strings into objects before sending the response
+    const parsedHistory = user.history.map((entry) => JSON.parse(entry));
+
+    res.json(parsedHistory);
+  } catch (err) {
+    console.error("Error fetching user history:", err);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
+
+// for clearing history of activity of user
+router.delete("/users/history/:id", isAuthenticated, async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Verify user exists first
+    const user = await prisma.user.findUnique({
+      where: { id: Number(id) },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        status: "error",
+        message: "User not found",
+      });
+    }
+
+    // Clear the history array
+    await prisma.user.update({
+      where: { id: Number(id) },
+      data: {
+        history: {
+          set: [], // Empty array
+        },
+      },
+    });
+
+    res.status(200).json({
+      status: "success",
+      message: "History cleared successfully",
+      count: 0,
+    });
+  } catch (err) {
+    console.error("Error clearing history:", err);
+    res.status(500).json({
+      status: "error",
+      message: "Internal Server Error",
+    });
+  }
+});
+
 // get user toots from the Mastodon account
 router.get("/users/toots/:id", isAuthenticated, async (req, res) => {
   try {
