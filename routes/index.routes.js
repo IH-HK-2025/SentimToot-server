@@ -66,11 +66,7 @@ async function getData(instance, token, keyword, limit = 10) {
 }
 
 router.get("/mastodon", isAuthenticated, async (req, res) => {
-  const {
-    instance = "mastodon.social",
-    keyword = "Tech",
-    limit = 10,
-  } = req.query;
+  const { instance = "mastodon.social", keyword, limit } = req.query;
   const userId = req.payload.id;
   const user = await prisma.user.findUnique({
     where: { id: userId },
