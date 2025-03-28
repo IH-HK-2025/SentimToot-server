@@ -1,37 +1,49 @@
 # SentimToot Server
 
-This is the backend server for the SentimToot project, which provides sentiment analysis and Mastodon integration. The server is built using Node.js, Express, and Prisma ORM, and it is deployed on [Render](https://render.com).
+This is the backend server for the SentimToot project, which provides sentiment analysis and Mastodon integration. The server is built using **Node.js**, **Express**, and **Prisma ORM**, and it is deployed on [Render](https://render.com).
 
 ## Deployment
 
 The server is live and deployed on Render. You can access it at:
 
-**Base URL:** [https://sentimtoot-server.onrender.com](https://sentimtoot-server.onrender.com)
+**Base URL:** [https://sentimtoot-server.onrender.com]([https://sentimtoot.netlify.app/](https://sentimtoot-server.onrender.com)
+**Frontend URL:** [https://sentimtoot.netlify.app](https://sentimtoot.netlify.app)
+
+## Technology Stack
+
+- **Node.js**: JavaScript runtime for building the server.
+- **Express**: Web framework for handling HTTP requests and routing.
+- **Prisma ORM**: Database ORM for interacting with the PostgreSQL database.
+- **PostgreSQL**: Relational database for storing user and toot data.
+- **Axios**: HTTP client for making API requests to Mastodon.
+- **Google Generative AI**: Used for sentiment analysis of Mastodon toots.
+- **Render**: Cloud platform for deploying the backend server.
+- **Netlify**: Hosting platform for the frontend.
 
 ## Endpoints
 
 Below is a table of the available API endpoints:
 
-| HTTP Method | Endpoint                       | Description                                                      | Authentication Required |
-| ----------- | ------------------------------ | ---------------------------------------------------------------- | ----------------------- |
-| `POST`      | `/api/auth/signup`             | Register a new user.                                             | No                      |
-| `POST`      | `/api/auth/login`              | Log in and receive a JWT token.                                  | No                      |
-| `PUT`       | `/api/auth/password`           | Change the password of an existing user.                         | Yes                     |
-| `GET`       | `/api/auth/verify`             | Verify the JWT token and retrieve user details.                  | Yes                     |
-| `GET`       | `/api/auth/users`              | Fetch all users with their details.                              | No                      |
-| `GET`       | `/api/auth/users/history/:id`  | Retrieve the search history of a specific user.                  | Yes                     |
-| `DELETE`    | `/api/auth/users/history/:id`  | Clear the search history of a specific user.                     | Yes                     |
-| `GET`       | `/api/auth/users/toots/:id`    | Fetch Mastodon toots of a specific user with sentiment analysis. | Yes                     |
-| `PATCH`     | `/api/auth/edit-toots/:tootId` | Edit a specific Mastodon toot.                                   | Yes                     |
-| `DELETE`    | `/api/auth/toots/:tootId`      | Delete a specific Mastodon toot.                                 | Yes                     |
-| `DELETE`    | `/api/auth/users/:id`          | Delete a user account.                                           | Yes                     |
-| `POST`      | `/api/user/token`              | Save the Mastodon token for a user.                              | Yes                     |
-| `GET`       | `/api/user/token`              | Retrieve the Mastodon token for a user.                          | Yes                     |
-| `GET`       | `/api/trends`                  | Analyze Mastodon trends and their sentiment distribution.        | Yes                     |
-| `POST`      | `/api/trends`                  | Perform sentiment analysis on Mastodon trends and posts.         | Yes                     |
-| `GET`       | `/api/mastodon`                | Search Mastodon posts by keyword and analyze their sentiment.    | Yes                     |
-| `POST`      | `/api/toot`                    | Post a new toot to Mastodon.                                     | Yes                     |
-| `GET`       | `/api/health`                  | Check the health of the server and database connection.          | No                      |
+| HTTP Method | Endpoint                     | Description                                                                                   | Authentication Required |
+|-------------|------------------------------|-----------------------------------------------------------------------------------------------|--------------------------|
+| `POST`      | `/api/auth/signup`           | Register a new user.                                                                          | No                       |
+| `POST`      | `/api/auth/login`            | Log in and receive a JWT token.                                                              | No                       |
+| `PUT`       | `/api/auth/password`         | Change the password of an existing user.                                                     | Yes                      |
+| `GET`       | `/api/auth/verify`           | Verify the JWT token and retrieve user details.                                              | Yes                      |
+| `GET`       | `/api/auth/users`            | Fetch all users with their details.                                                          | No                       |
+| `GET`       | `/api/auth/users/history/:id`| Retrieve the search history of a specific user.                                              | Yes                      |
+| `DELETE`    | `/api/auth/users/history/:id`| Clear the search history of a specific user.                                                 | Yes                      |
+| `GET`       | `/api/auth/users/toots/:id`  | Fetch Mastodon toots of a specific user with sentiment analysis.                             | Yes                      |
+| `PATCH`     | `/api/auth/edit-toots/:tootId`| Edit a specific Mastodon toot.                                                               | Yes                      |
+| `DELETE`    | `/api/auth/toots/:tootId`    | Delete a specific Mastodon toot.                                                             | Yes                      |
+| `DELETE`    | `/api/auth/users/:id`        | Delete a user account.                                                                       | Yes                      |
+| `POST`      | `/api/user/token`            | Save the Mastodon token for a user.                                                         | Yes                      |
+| `GET`       | `/api/user/token`            | Retrieve the Mastodon token for a user.                                                     | Yes                      |
+| `GET`       | `/api/trends`                | Analyze Mastodon trends and their sentiment distribution.                                    | Yes                      |
+| `POST`      | `/api/trends`                | Perform sentiment analysis on Mastodon trends and posts.                                     | Yes                      |
+| `GET`       | `/api/mastodon`              | Search Mastodon posts by keyword and analyze their sentiment.                                | Yes                      |
+| `POST`      | `/api/toot`                  | Post a new toot to Mastodon.                                                                 | Yes                      |
+| `GET`       | `/api/health`                | Check the health of the server and database connection.                                      | No                       |
 
 ## GitHub Repository
 
@@ -44,20 +56,17 @@ The source code for the server is available on GitHub:
 To run the server locally, follow these steps:
 
 1. Clone the repository:
-
    ```bash
    git clone https://github.com/IH-HK-2025/SentimToot-server.git
    cd SentimToot-server
    ```
 
 2. Install dependencies:
-
    ```bash
    npm install
    ```
 
 3. Set up the environment variables in a `.env` file:
-
    ```env
    DATABASE_URL=your_database_url
    TOKEN_SECRET=your_jwt_secret
@@ -65,7 +74,6 @@ To run the server locally, follow these steps:
    ```
 
 4. Run the server:
-
    ```bash
    npm run dev
    ```
